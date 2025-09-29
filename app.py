@@ -7,6 +7,7 @@ import zipfile
 import io
 import tempfile
 import time
+import re
 
 from input_parser import InputParser
 from scheduler import TimetableScheduler
@@ -72,6 +73,10 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
     }
+    /* Ensure timetable cells are not overridden by Streamlit theme */
+    .stDataFrame [data-testid="stTable"] td {
+        background-color: inherit !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -87,8 +92,8 @@ def main():
         st.session_state.selected_teacher = None
 
     # Header
-    st.markdown('<h1 class="main-header">📅 SmartScheduler</h1>', unsafe_allow_html=True)
-    st.markdown('<h3 style="text-align: center; color: #666;">AI-Powered Timetable Generator for Engineering Colleges</h3>', 
+    st.markdown('<h1 class="main-header">🗓️ SmartScheduler</h1>', unsafe_allow_html=True)
+    st.markdown('<h3 style="text-align: center; color: #666;">Automated Timetable Generator for Higher Educational Institutes Using OR-Tools and the DEAP Python Library</h3>', 
                 unsafe_allow_html=True)
 
     # Sidebar
@@ -123,8 +128,6 @@ def main():
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
-
-        st.markdown("---")
 
         # Color legend
         st.subheader("🎨 Color Legend")
@@ -185,6 +188,9 @@ def generate_timetable_workflow(uploaded_file):
             else:
                 st.success("✅ Input file validated successfully!")
 
+            # Log courses dictionary for debugging
+            logger.info(f"Courses dictionary: {courses}")
+
         # Display input summary
         display_input_summary(courses, teachers, rooms, timeslots, groups)
 
@@ -198,6 +204,8 @@ def generate_timetable_workflow(uploaded_file):
                 return
 
             st.success("✅ Timetable generated successfully!")
+            # Log schedule for debugging
+            logger.info(f"Generated schedule: {schedule}")
 
         with st.spinner("📊 Generating output files..."):
             # Generate outputs
@@ -284,6 +292,14 @@ def display_timetable_results(generator, stats, excel_files, html_files, pdf_fil
         avg_utilization = sum(stats['room_utilization'].values()) / len(stats['room_utilization']) if stats['room_utilization'] else 0
         st.metric("Avg Room Utilization", f"{avg_utilization:.1f}")
 
+    # Calculate metrics
+    metrics = generator.calculate_metrics()
+    st.subheader("📈 Timetable Quality Metrics")
+    st.write(f"Accuracy: {metrics['accuracy']:.2f}")
+    st.write(f"Precision: {metrics['precision']:.2f}")
+    st.write(f"Recall: {metrics['recall']:.2f}")
+    st.write(f"F1 Score: {metrics['f1_score']:.2f}")
+
     # Timetable views
     st.subheader("📅 Timetable Views")
 
@@ -294,15 +310,15 @@ def display_timetable_results(generator, stats, excel_files, html_files, pdf_fil
 
     with tab1:
         st.session_state.active_tab = tab_names[0]
-        display_class_timetables(generator)
+        display_class_timetables(generator, metrics)
 
     with tab2:
         st.session_state.active_tab = tab_names[1]
-        display_teacher_timetables(generator)
+        display_teacher_timetables(generator, metrics)
 
     with tab3:
         st.session_state.active_tab = tab_names[2]
-        display_room_timetables(generator)
+        display_room_timetables(generator, metrics)
 
     # Download section
     st.subheader("📥 Download Timetables")
@@ -322,21 +338,22 @@ def display_timetable_results(generator, stats, excel_files, html_files, pdf_fil
         if st.button("📦 Download All", use_container_width=True):
             create_zip_download(excel_files, html_files, pdf_files)
 
-def display_class_timetables(generator):
+def display_class_timetables(generator, metrics):
     """Display class-wise timetables"""
-
     class_timetables = generator.generate_class_timetable()
 
     for group_id, timetable in class_timetables.items():
         st.markdown(f"### 🎓 Group: {group_id}")
-
+        # Log timetable cell content for debugging
+        logger.info(f"Timetable cell content for {group_id}: {timetable.values}")
         # Style the dataframe
         styled_df = style_timetable_dataframe(timetable, generator.courses)
         st.dataframe(styled_df, use_container_width=True, height=400)
+        # Display metrics chart
+        display_metrics_chart(metrics, f"Metrics for Group {group_id}")
 
-def display_teacher_timetables(generator):
+def display_teacher_timetables(generator, metrics):
     """Display teacher-wise timetables"""
-
     teacher_timetables = generator.generate_teacher_timetable()
 
     # Teacher selection
@@ -359,14 +376,17 @@ def display_teacher_timetables(generator):
             st.markdown(f"### 👨‍🏫 Teacher: {generator.teachers[selected_teacher]['teacher_name']} ({selected_teacher})")
 
             timetable = teacher_timetables[selected_teacher]
+            # Log timetable cell content for debugging
+            logger.info(f"Teacher timetable cell content for {selected_teacher}: {timetable.values}")
             styled_df = style_timetable_dataframe(timetable, generator.courses)
             st.dataframe(styled_df, use_container_width=True, height=400)
+            # Display metrics chart
+            display_metrics_chart(metrics, f"Metrics for Teacher {selected_teacher}")
     else:
         st.warning("No teachers available to display.")
 
-def display_room_timetables(generator):
+def display_room_timetables(generator, metrics):
     """Display room-wise timetables"""
-
     room_timetables = generator.generate_room_timetable()
 
     # Room selection
@@ -379,22 +399,29 @@ def display_room_timetables(generator):
             st.markdown(f"### 🏢 Room: {selected_room} (Capacity: {room_info['capacity']}, Type: {room_info['type'].title()})")
 
             timetable = room_timetables[selected_room]
+            # Log timetable cell content for debugging
+            logger.info(f"Room timetable cell content for {selected_room}: {timetable.values}")
             styled_df = style_timetable_dataframe(timetable, generator.courses)
             st.dataframe(styled_df, use_container_width=True, height=400)
+            # Display metrics chart
+            display_metrics_chart(metrics, f"Metrics for Room {selected_room}")
     else:
         st.warning("No rooms available to display.")
 
 def style_timetable_dataframe(df, courses):
-    """Style timetable dataframe with colors matching the legend"""
+    """Style timetable dataframe with colors matching course types"""
     def color_cells(val):
         if pd.isna(val) or val == '':
-            return ''
+            return 'background-color: transparent;'
         lines = str(val).split('\n')
         if lines:
-            course_id = lines[0]
-            if course_id in courses:
-                course_type = str(courses[course_id]['type']).upper()
-                logger.info(f"Styling course ID: {course_id}, Type: {course_type}")
+            # Extract base course_id by removing _partX and instance suffixes (e.g., _1, _2)
+            course_id = lines[0].split('_part')[0]
+            base_course_id = re.sub(r'_\d+$', '', course_id)
+            logger.info(f"Extracted course_id: {course_id}, Base course_id: {base_course_id}, Cell content: {val}")
+            if base_course_id in courses:
+                course_type = str(courses[base_course_id]['type']).upper()
+                logger.info(f"Styling course ID: {base_course_id}, Type: {course_type}")
                 color_map = {
                     'TH': 'background-color: #4FC3F7; border: 1px solid #2196F3; color: #000000;',
                     'PR': 'background-color: #4CAF50; border: 1px solid #4CAF50; color: #000000;',
@@ -402,17 +429,70 @@ def style_timetable_dataframe(df, courses):
                     'PROJECT': 'background-color: #FFB300; border: 1px solid #FF9800; color: #000000;'
                 }
                 if course_type not in color_map:
-                    logger.warning(f"Unrecognized course type: {course_type} for course ID: {course_id}")
-                    return 'background-color: #D3D3D3; border: 1px solid #A9A9A9; color: #000000;'  # Fallback for unknown types
+                    logger.warning(f"Unrecognized course type: {course_type} for course ID: {base_course_id}")
+                    return 'background-color: #D3D3D3; border: 1px solid #A9A9A9; color: #000000;'
                 return color_map[course_type]
-            logger.warning(f"Course ID not found: {course_id}")
-            return 'background-color: #1E90FF; border: 1px solid #0000CD; color: #FFFFFF;'  # Blue for errors
-        return 'background-color: #f8f9fa;'
+            logger.warning(f"Course ID not found: {base_course_id}")
+            return 'background-color: #1E90FF; border: 1px solid #0000CD; color: #FFFFFF;'
+        return 'background-color: transparent;'
+
+    # Use applymap for compatibility with older pandas versions
     return df.style.applymap(color_cells)
+
+def display_metrics_chart(metrics, title):
+    """Display a bar chart for accuracy, precision, recall, and F1 score"""
+    chart_id = f"chart-{title.replace(' ', '-').lower()}-{int(datetime.now().timestamp())}"
+    chart_html = f"""
+    <canvas id="{chart_id}" width="400" height="200"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        var ctx = document.getElementById('{chart_id}').getContext('2d');
+        new Chart(ctx, {{
+            type: 'bar',
+            data: {{
+                labels: ['Accuracy', 'Precision', 'Recall', 'F1 Score'],
+                datasets: [{{
+                    label: 'Metrics',
+                    data: [{metrics['accuracy']}, {metrics['precision']}, {metrics['recall']}, {metrics['f1_score']}],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.8)',  // Blue
+                        'rgba(75, 192, 192, 0.8)',  // Green
+                        'rgba(255, 159, 64, 0.8)',  // Orange
+                        'rgba(153, 102, 255, 0.8)'  // Purple
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                plugins: {{
+                    legend: {{ display: false }},
+                    title: {{ display: true, text: '{title}' }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: true,
+                        max: 1,
+                        title: {{ display: true, text: 'Score' }}
+                    }},
+                    x: {{
+                        title: {{ display: true, text: 'Metric' }}
+                    }}
+                }}
+            }}
+        }});
+    </script>
+    """
+    st.markdown(chart_html, unsafe_allow_html=True)
 
 def create_download_button(label, files, file_type):
     """Create download button for file type"""
-
     if files:
         # Create a zip file with all files of this type
         zip_buffer = io.BytesIO()
@@ -435,7 +515,6 @@ def create_download_button(label, files, file_type):
 
 def create_zip_download(excel_files, html_files, pdf_files):
     """Create download for all files"""
-
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -459,7 +538,6 @@ def create_zip_download(excel_files, html_files, pdf_files):
 
 def display_existing_timetables():
     """Display existing timetables if available"""
-
     st.info("📂 Found existing timetable files. Upload a new file to regenerate.")
 
     # List existing files
@@ -488,7 +566,6 @@ def display_existing_timetables():
 
 def display_welcome_screen():
     """Display welcome screen with instructions"""
-
     st.markdown("---")
 
     col1, col2 = st.columns([2, 1])
@@ -497,7 +574,7 @@ def display_welcome_screen():
         st.markdown("""
         ## 🚀 Welcome to SmartScheduler
 
-        SmartScheduler is an AI-powered timetable generator designed specifically for engineering colleges. 
+        SmartScheduler is an AI-powered automated timetable generator designed specifically for higher educational institutes. 
         It uses advanced optimization algorithms (OR-Tools + DEAP) to create conflict-free, optimized timetables.
 
         ### ✨ Features:
@@ -506,6 +583,7 @@ def display_welcome_screen():
         - **Multiple Views**: Class-wise, Teacher-wise, and Room-wise timetables
         - **Multiple Formats**: Export to Excel, HTML, and PDF
         - **Color-coded Display**: Visual distinction for different course types
+        - **Timetable Quality Metrics**: Shows Accuracy, Precision, Recall and F1 Score after every generation
 
         ### 📁 Input Format:
         Your Excel file should contain these sheets:
@@ -524,8 +602,9 @@ def display_welcome_screen():
         """)
 
     with col2:
-        st.image("https://via.placeholder.com/400x300/1f77b4/ffffff?text=SmartScheduler", 
-                caption="AI-Powered Timetable Generation")
+        st.markdown("""
+        ### 🎓 Final Year Project (B.Tech AI)
+        """)
 
         st.markdown("### 🎨 Course Color Coding")
         st.markdown("""
