@@ -1,15 +1,13 @@
 import pandas as pd
-import logging
-from typing import Dict, List, Any, Tuple
 import os
+import logging
+import re
+from typing import Dict, List, Any
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,12 +26,12 @@ class TimetableGenerator:
         self.days = self._get_ordered_days()
         self.times = self._get_ordered_times()
 
-        # Color scheme for different course types
+        # Color scheme for different course types (matched to HTML output)
         self.color_scheme = {
-            'TH': "#0D13A8",      #  blue for theory
-            'PR': "#0093A67A",      #  green for practical
-            'LAB': "#008000",     #  green for lab
-            'PROJECT': "#C47900"  #  orange for project
+            'TH': '#E3F2FD',      # Light blue for theory
+            'PR': '#E8F5E8',      # Light green for practical
+            'LAB': '#E8F5E8',     # Light green for lab
+            'PROJECT': '#FFF3E0'  # Light orange for project
         }
 
     def _get_ordered_days(self) -> List[str]:
@@ -239,7 +237,6 @@ class TimetableGenerator:
     def _export_timetables_to_html(self, timetables: Dict[str, pd.DataFrame], 
                                    filename: str, title: str, name_mapping: Dict = None):
         """Export timetables to HTML with styling"""
-
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -299,13 +296,19 @@ class TimetableGenerator:
             html_content += f"<h2>{display_name}</h2>\n"
 
             # Convert DataFrame to HTML with custom styling
-            table_html = timetable.to_html(classes='timetable', escape=False)
-
-            # Add color coding based on content
-            for course_type in ['TH', 'PR', 'LAB', 'PROJECT']:
+            def format_cell(cell):
+                if not cell:
+                    return ''
+                lines = cell.split('\n')
+                course_id = lines[0].split('_part')[0]
+                course_id = re.sub(r'_\d+$', '', course_id)
+                course_type = self.courses.get(course_id, {}).get('type', 'UNKNOWN').upper()
                 color_class = 'theory' if course_type == 'TH' else ('practical' if course_type in ['PR', 'LAB'] else 'project')
-                table_html = table_html.replace(f'>{course_type}', f' class="{color_class}">{course_type}')
+                logger.info(f"HTML cell content: {cell}, Course ID: {course_id}, Type: {course_type}")
+                formatted_cell = cell.replace('\n', '<br>')
+                return f'<div class="{color_class}">{formatted_cell}</div>'
 
+            table_html = timetable.to_html(classes='timetable', escape=False, formatters={col: format_cell for col in timetable.columns})
             html_content += table_html + "\n"
 
         html_content += """
@@ -351,7 +354,6 @@ class TimetableGenerator:
     def _export_timetables_to_pdf(self, timetables: Dict[str, pd.DataFrame], 
                                   filename: str, title: str, name_mapping: Dict = None):
         """Export timetables to PDF"""
-
         doc = SimpleDocTemplate(filename, pagesize=landscape(A4))
         styles = getSampleStyleSheet()
         story = []
@@ -380,35 +382,124 @@ class TimetableGenerator:
 
             # Data rows
             for time in timetable.index:
-                row = [time]
+                row = [Paragraph(time, styles['Normal'])]
                 for day in timetable.columns:
                     cell_value = timetable.loc[time, day]
-                    # Split long text into multiple lines
-                    if len(str(cell_value)) > 20:
-                        cell_value = str(cell_value).replace('\n', '<br/>')
-                    row.append(cell_value)
+                    if cell_value:
+                        # Split cell content into lines
+                        lines = str(cell_value).split('\n')
+                        course_id = lines[0].split('_part')[0]
+                        course_id = re.sub(r'_\d+$', '', course_id)
+                        course_type = self.courses.get(course_id, {}).get('type', 'UNKNOWN').upper()
+                        logger.info(f"PDF cell content: {cell_value}, Course ID: {course_id}, Type: {course_type}")
+                        # Wrap each line in a Paragraph
+                        cell_content = [Paragraph(line, styles['Normal']) for line in lines if line]
+                        # Apply color based on course type
+                        color = colors.HexColor(self.color_scheme.get(course_type, '#FFFFFF'))
+                    else:
+                        cell_content = [Paragraph('', styles['Normal'])]
+                        color = colors.white  # No background for empty cells
+                    row.append(cell_content)
                 table_data.append(row)
 
             # Create table
-            table = Table(table_data)
-            table.setStyle(TableStyle([
+            table = Table(table_data, colWidths=[1.0*inch] + [1.5*inch]*len(timetable.columns))
+            table_style = TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 8),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
                 ('FONTSIZE', (0, 1), (-1, -1), 6),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ]))
+            ])
 
+            # Apply colors to cells
+            for row_idx, row in enumerate(table_data[1:], 1):  # Skip header
+                for col_idx, cell in enumerate(row[1:], 1):  # Skip time column
+                    if isinstance(cell, list) and cell:  # Non-empty cell
+                        course_id = str(row[1][0]).split('_part')[0]  # Get course_id from first Paragraph
+                        course_id = re.sub(r'_\d+$', '', course_id)
+                        course_type = self.courses.get(course_id, {}).get('type', 'UNKNOWN').upper()
+                        color = colors.HexColor(self.color_scheme.get(course_type, '#FFFFFF'))
+                        table_style.add('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), color)
+
+            table.setStyle(table_style)
             story.append(table)
             story.append(Spacer(1, 0.3*inch))
 
         # Build PDF
         doc.build(story)
+
+    def calculate_metrics(self) -> Dict[str, float]:
+        """Calculate accuracy, precision, recall, and F1 score for the timetable"""
+        logger.info("Calculating timetable metrics...")
+
+        # Initialize counters
+        total_assignments = 0
+        conflict_free_assignments = 0
+        correctly_scheduled = 0
+        required_classes = 0
+        scheduled_classes = 0
+
+        # Check for conflicts (hard constraints)
+        timeslot_assignments = {}
+        for group_id in self.schedule:
+            for course_id, assignment in self.schedule[group_id].items():
+                total_assignments += 1
+                timeslot_id = assignment['timeslot']
+                teacher_id = assignment['teacher']
+                room_id = assignment['room']
+
+                # Track assignments per timeslot
+                if timeslot_id not in timeslot_assignments:
+                    timeslot_assignments[timeslot_id] = {'teachers': set(), 'rooms': set(), 'groups': set()}
+                timeslot_assignments[timeslot_id]['teachers'].add(teacher_id)
+                timeslot_assignments[timeslot_id]['rooms'].add(room_id)
+                timeslot_assignments[timeslot_id]['groups'].add(group_id)
+
+        # Count conflict-free assignments
+        for timeslot_id, assignments in timeslot_assignments.items():
+            # No conflicts if each teacher, room, and group appears once per timeslot
+            if (len(assignments['teachers']) == len(assignments['rooms']) == len(assignments['groups']) ==
+                sum(1 for group_id in self.schedule for course_id in self.schedule[group_id] if self.schedule[group_id][course_id]['timeslot'] == timeslot_id)):
+                conflict_free_assignments += len(assignments['groups'])
+
+        # Calculate required and scheduled classes
+        for group_id in self.groups:
+            group_courses = self.groups[group_id].get('courses', [])
+            for course_id in group_courses:
+                base_course_id = re.sub(r'_\d+$', '', course_id)
+                course_type = self.courses.get(base_course_id, {}).get('type', 'UNKNOWN').upper()
+                # Assume frequency from course requirements (e.g., TH: 3, LAB: 2)
+                frequency = {'TH': 3, 'PR': 2, 'LAB': 2, 'PROJECT': 1}.get(course_type, 1)
+                required_classes += frequency
+
+                # Count scheduled instances
+                scheduled_count = sum(1 for cid, assignment in self.schedule.get(group_id, {}).items()
+                                     if re.sub(r'_\d+$', '', cid.split('_part')[0]) == base_course_id)
+                scheduled_classes += scheduled_count
+
+                # Check if scheduled matches requirements
+                if scheduled_count == frequency:
+                    correctly_scheduled += scheduled_count
+
+        # Calculate metrics
+        accuracy = conflict_free_assignments / total_assignments if total_assignments > 0 else 0.0
+        precision = correctly_scheduled / scheduled_classes if scheduled_classes > 0 else 0.0
+        recall = correctly_scheduled / required_classes if required_classes > 0 else 0.0
+        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+
+        metrics = {
+            'accuracy': round(accuracy, 2),
+            'precision': round(precision, 2),
+            'recall': round(recall, 2),
+            'f1_score': round(f1_score, 2)
+        }
+        logger.info(f"Metrics calculated: {metrics}")
+        return metrics
 
     def generate_summary_statistics(self) -> Dict[str, Any]:
         """Generate summary statistics about the timetable"""
@@ -473,8 +564,9 @@ def test_output_generator():
         html_files = generator.export_to_html()
         pdf_files = generator.export_to_pdf()
 
-        # Generate statistics
+        # Generate statistics and metrics
         stats = generator.generate_summary_statistics()
+        metrics = generator.calculate_metrics()
 
         print("Output generation completed!")
         print(f"Excel files: {excel_files}")
@@ -482,6 +574,7 @@ def test_output_generator():
         print(f"PDF files: {pdf_files}")
         print(f"Total classes scheduled: {stats['total_classes']}")
         print(f"Classes by type: {stats['classes_by_type']}")
+        print(f"Metrics: {metrics}")
     else:
         print("No schedule to generate outputs for")
 
