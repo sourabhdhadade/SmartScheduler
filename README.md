@@ -1,11 +1,11 @@
-# SmartScheduler - AI Timetable Generator
+# SmartScheduler - AI-Powered Automated Timetable Generator
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.25.0-red.svg)](https://streamlit.io/)
 [![OR-Tools](https://img.shields.io/badge/OR--Tools-9.7-green.svg)](https://developers.google.com/optimization)
 [![DEAP](https://img.shields.io/badge/DEAP-1.4.1-orange.svg)](https://github.com/DEAP/deap)
 
-SmartScheduler is an AI-powered timetable generator designed specifically for engineering colleges. It uses advanced optimization algorithms combining Google OR-Tools for constraint satisfaction and DEAP genetic algorithms for optimization to create conflict-free, optimized timetables.
+SmartScheduler is an AI-powered automated timetable generator designed specifically for higher educational institutes. It uses advanced optimization algorithms combining Google OR-Tools for constraint satisfaction and DEAP genetic algorithms for optimization to create conflict-free, optimized timetables.
 
 ## 🌟 Features
 
@@ -16,6 +16,7 @@ SmartScheduler is an AI-powered timetable generator designed specifically for en
 - **Multi-format Export**: Export timetables to Excel, HTML, and PDF formats
 - **Interactive Web Interface**: User-friendly Streamlit-based interface
 - **Color-coded Display**: Visual distinction for different course types (Theory=Blue, Practical/Lab=Green, Project=Orange)
+- **Timetable Quality Metrics**: Shows Accuracy, Precision, Recall and F1 Score after every generation
 
 ### Advanced Features
 - **Input Validation**: Comprehensive validation of input data with detailed error reporting
