@@ -6,19 +6,28 @@
 [![DEAP](https://img.shields.io/badge/DEAP-1.4.1-orange.svg)](https://github.com/DEAP/deap)
 
 Sourabh Dhadade, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
+
 [![Sourabh Dhadade](https://img.shields.io/badge/Sourabh_Dhadade-red.svg)](https://github.com/sourabhdhadade/)
+
 Email: sourabhdha367@gmail.com
 
 Mohit Raut, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
+
 [![Mohit Raut](https://img.shields.io/badge/Mohit_Raut-red.svg)](https://github.com/rmohit9/)
+
 Email: mohitraut009@gmail.com
 
 Harshal Ghoradkar, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
+
 [![Harshal Ghoradkar](https://img.shields.io/badge/Harshal_Ghoradkar-red.svg)](https://github.com/Harshal279/)
+
 Email: harshalghoradkar2@gmail.com
 
 Anshu pandey, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
+
 Email: anshupandey1369@gmail.com
+
+
 SmartScheduler is an AI-powered automated timetable generator designed specifically for higher educational institutes. It uses advanced optimization algorithms combining Google OR-Tools for constraint satisfaction and DEAP genetic algorithms for optimization to create conflict-free, optimized timetables.
 
 ## 🌟 Features
