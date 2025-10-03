@@ -1,34 +1,17 @@
 # SmartScheduler - AI-Powered Automated Timetable Generator
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.25.0-red.svg)](https://streamlit.io/)
-[![OR-Tools](https://img.shields.io/badge/OR--Tools-9.7-green.svg)](https://developers.google.com/optimization)
-[![DEAP](https://img.shields.io/badge/DEAP-1.4.1-orange.svg)](https://github.com/DEAP/deap)
+[![Python](https://img.shields.io/badge/Python-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-red.svg)](https://streamlit.io/)
+[![OR-Tools](https://img.shields.io/badge/OR--Tools-green.svg)](https://developers.google.com/optimization)
+[![DEAP](https://img.shields.io/badge/DEAP-orange.svg)](https://github.com/DEAP/deap)
 
-Sourabh Dhadade, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
+*By*<br>
+*Sourabh Dhadade* [![Sourabh Dhadade](https://img.shields.io/badge/Github-sourabhdhadade-purple.svg)](https://github.com/sourabhdhadade/)<br>
+*Mohit Raut* [![Mohit Raut](https://img.shields.io/badge/Github-rmohit9-purple.svg)](https://github.com/rmohit9/)<br>
+*Harshal Ghoradkar* [![Harshal Ghoradkar](https://img.shields.io/badge/Github-Harshal1279-purple.svg)](https://github.com/Harshal279/)<br>
+*Anshu Pandey*<br>
 
-[![Sourabh Dhadade](https://img.shields.io/badge/Sourabh_Dhadade-red.svg)](https://github.com/sourabhdhadade/)
-
-Email: sourabhdha367@gmail.com
-
-Mohit Raut, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
-
-[![Mohit Raut](https://img.shields.io/badge/Mohit_Raut-red.svg)](https://github.com/rmohit9/)
-
-Email: mohitraut009@gmail.com
-
-Harshal Ghoradkar, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
-
-[![Harshal Ghoradkar](https://img.shields.io/badge/Harshal_Ghoradkar-red.svg)](https://github.com/Harshal279/)
-
-Email: harshalghoradkar2@gmail.com
-
-Anshu pandey, Department of Artificial Intelligence , G.H.Raisoni College Of Engineering, Nagpur
-
-Email: anshupandey1369@gmail.com
-
-
-SmartScheduler is an AI-powered automated timetable generator designed specifically for higher educational institutes. It uses advanced optimization algorithms combining Google OR-Tools for constraint satisfaction and DEAP genetic algorithms for optimization to create conflict-free, optimized timetables.
+**SmartScheduler is an AI-powered automated timetable generator designed specifically for higher educational institutes. It uses advanced optimization algorithms combining Google OR-Tools for constraint satisfaction and DEAP genetic algorithms for optimization to create conflict-free, optimized timetables.**
 
 ## 🌟 Features
 
